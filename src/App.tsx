@@ -16,18 +16,26 @@ type LoadedSource = {
   fileName: string
   sourceKind: SourceKind
   snapshots: Snapshot[]
+  restoredFromStorage?: boolean
+}
+
+type PersistedSource = {
+  fileName: string
+  fileText: string
 }
 
 const EMPTY_SNAPSHOTS: Snapshot[] = []
+const PERSISTED_SOURCE_KEY = 'compatibility-explorer:selected-source'
 
 function App() {
-  const [loadedSource, setLoadedSource] = useState<LoadedSource | null>(null)
+  const [initialSourceLoad] = useState(loadPersistedSource)
+  const [loadedSource, setLoadedSource] = useState<LoadedSource | null>(initialSourceLoad.loadedSource)
   const [selectedRefs, setSelectedRefs] = useState<string[]>([])
   const [selectedService, setSelectedService] = useState<string | null>(null)
   const [serviceSearch, setServiceSearch] = useState('')
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set())
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialSourceLoad.error)
 
   const snapshots = loadedSource?.snapshots ?? EMPTY_SNAPSHOTS
   const indexes = useMemo(() => buildIndexes(snapshots), [snapshots])
@@ -67,6 +75,11 @@ function App() {
         sourceKind: parsed.sourceKind,
         snapshots: parsed.snapshots,
       })
+      try {
+        persistSource(file.name, fileText)
+      } catch (caught) {
+        setError(caught instanceof Error ? `Loaded file, but could not remember it: ${caught.message}` : 'Loaded file, but could not remember it.')
+      }
       setSelectedRefs([])
       setSelectedService(null)
       setExpandedServices(new Set())
@@ -128,7 +141,10 @@ function App() {
         <div>
           <span className="status-label">Source</span>
           {loadedSource ? (
-            <strong>{loadedSource.fileName}</strong>
+            <strong>
+              {loadedSource.fileName}
+              {loadedSource.restoredFromStorage ? <span className="restored-label">Restored</span> : null}
+            </strong>
           ) : (
             <strong>No compatibility data loaded</strong>
           )}
@@ -410,6 +426,41 @@ function toggleSetValue<T>(set: Set<T>, value: T): Set<T> {
   }
 
   return next
+}
+
+function loadPersistedSource(): { loadedSource: LoadedSource | null; error: string | null } {
+  try {
+    const persistedJson = window.localStorage.getItem(PERSISTED_SOURCE_KEY)
+    if (!persistedJson) {
+      return { loadedSource: null, error: null }
+    }
+
+    const persisted = JSON.parse(persistedJson) as PersistedSource
+    if (!persisted.fileName || !persisted.fileText) {
+      return { loadedSource: null, error: null }
+    }
+
+    const parsed = parseCompatibilityFile(persisted.fileName, persisted.fileText)
+    return {
+      loadedSource: {
+        fileName: persisted.fileName,
+        sourceKind: parsed.sourceKind,
+        snapshots: parsed.snapshots,
+        restoredFromStorage: true,
+      },
+      error: null,
+    }
+  } catch (caught) {
+    return {
+      loadedSource: null,
+      error: caught instanceof Error ? `Unable to restore saved data file: ${caught.message}` : 'Unable to restore saved data file.',
+    }
+  }
+}
+
+function persistSource(fileName: string, fileText: string) {
+  const persisted: PersistedSource = { fileName, fileText }
+  window.localStorage.setItem(PERSISTED_SOURCE_KEY, JSON.stringify(persisted))
 }
 
 export default App

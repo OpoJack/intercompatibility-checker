@@ -109,9 +109,25 @@
 }
 
 .status-bar strong {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   overflow-wrap: anywhere;
   color: var(--text-strong);
+}
+
+.restored-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 8px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .warning,
