@@ -320,7 +320,12 @@
   align-items: center;
   justify-content: flex-end;
   color: var(--muted);
-  white-space: nowrap;
+  min-width: 0;
+}
+
+.version-summary {
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .chevron {

@@ -335,7 +335,7 @@ function CompatibleResults({
                 <small>{service.types.join(', ') || 'component'}</small>
               </span>
               <span>
-                {service.versions.length.toLocaleString()} observed versions
+                <span className="version-summary">{formatServiceVersionSummary(service.versions)}</span>
                 <span className="chevron">{expanded ? '−' : '+'}</span>
               </span>
             </button>
@@ -415,6 +415,14 @@ function VersionRow({
       )}
     </div>
   )
+}
+
+function formatServiceVersionSummary(versions: CompatibleVersion[]): string {
+  if (versions.length === 1) {
+    return versions[0].component.version
+  }
+
+  return `${versions.length.toLocaleString()} observed versions`
 }
 
 function toggleSetValue<T>(set: Set<T>, value: T): Set<T> {

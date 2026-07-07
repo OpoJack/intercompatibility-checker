@@ -227,11 +227,11 @@ export function getAllServices(indexes: Indexes): ServiceSummary[] {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Returns every known component version for one service sorted by version text. */
+/** Returns every known component version for one service sorted highest version first. */
 export function getVersionsForService(serviceName: string, indexes: Indexes): Component[] {
   return Array.from(indexes.componentRefToComponent.values())
     .filter((component) => component.name === serviceName)
-    .sort((a, b) => naturalCompare(a.version, b.version) || a.type.localeCompare(b.type))
+    .sort((a, b) => naturalCompare(b.version, a.version) || a.type.localeCompare(b.type))
 }
 
 /** Finds snapshots containing every currently selected component ref. */
