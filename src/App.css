@@ -151,9 +151,13 @@
 .toolbar {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   margin: 20px 0;
+}
+
+.toolbar .secondary-button {
+  margin-left: auto;
 }
 
 .search-field {
@@ -163,6 +167,45 @@
   color: var(--muted);
   font-size: 13px;
   font-weight: 650;
+}
+
+.type-filter {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.segmented-control {
+  display: inline-flex;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.segmented-control button {
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.segmented-control button:last-child {
+  border-right: 0;
+}
+
+.segmented-control button:hover,
+.segmented-control button.is-active {
+  background: var(--selected);
+  color: var(--text-strong);
 }
 
 .search-field input {
@@ -505,6 +548,20 @@
   .constraint-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .toolbar .secondary-button {
+    margin-left: 0;
+  }
+
+  .segmented-control {
+    display: flex;
+    width: 100%;
+  }
+
+  .segmented-control button {
+    flex: 1 1 0;
+    white-space: normal;
   }
 
   .status-bar {

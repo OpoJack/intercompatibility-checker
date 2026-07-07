@@ -24,6 +24,8 @@ type PersistedSource = {
   fileText: string
 }
 
+type ComponentTypeFilter = 'all' | 'chart' | 'image'
+
 const EMPTY_SNAPSHOTS: Snapshot[] = []
 const PERSISTED_SOURCE_KEY = 'compatibility-explorer:selected-source'
 
@@ -33,6 +35,7 @@ function App() {
   const [selectedRefs, setSelectedRefs] = useState<string[]>([])
   const [selectedService, setSelectedService] = useState<string | null>(null)
   const [serviceSearch, setServiceSearch] = useState('')
+  const [componentTypeFilter, setComponentTypeFilter] = useState<ComponentTypeFilter>('all')
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set())
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(initialSourceLoad.error)
@@ -51,13 +54,26 @@ function App() {
   const selectedComponents = selectedRefs
     .map((ref) => indexes.componentRefToComponent.get(ref))
     .filter((component): component is Component => component !== undefined)
-  const filteredServices = services.filter((service) =>
-    service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()),
+  const filteredServices = services.filter(
+    (service) =>
+      service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()) &&
+      serviceMatchesTypeFilter(service.types, componentTypeFilter),
   )
-  const activeCompatibleServices = compatibleServices.filter((service) =>
-    service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()),
-  )
-  const selectedServiceVersions = selectedService ? getVersionsForService(selectedService, indexes) : []
+  const activeCompatibleServices = compatibleServices
+    .map((service) => ({
+      ...service,
+      versions: filterVersionsByType(service.versions, componentTypeFilter),
+      types: filterTypesByType(service.types, componentTypeFilter),
+    }))
+    .filter(
+      (service) =>
+        service.versions.length > 0 && service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()),
+    )
+  const selectedServiceVersions = selectedService
+    ? getVersionsForService(selectedService, indexes).filter((component) =>
+        componentMatchesTypeFilter(component.type, componentTypeFilter),
+      )
+    : []
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -180,6 +196,32 @@ function App() {
                 onChange={(event) => setServiceSearch(event.target.value)}
               />
             </label>
+            <div className="type-filter" aria-label="Component type filter">
+              <span>Type</span>
+              <div className="segmented-control">
+                <button
+                  type="button"
+                  className={componentTypeFilter === 'all' ? 'is-active' : ''}
+                  onClick={() => setComponentTypeFilter('all')}
+                >
+                  Images + charts
+                </button>
+                <button
+                  type="button"
+                  className={componentTypeFilter === 'image' ? 'is-active' : ''}
+                  onClick={() => setComponentTypeFilter('image')}
+                >
+                  Images
+                </button>
+                <button
+                  type="button"
+                  className={componentTypeFilter === 'chart' ? 'is-active' : ''}
+                  onClick={() => setComponentTypeFilter('chart')}
+                >
+                  Charts
+                </button>
+              </div>
+            </div>
             {selectedRefs.length > 0 && (
               <button type="button" className="secondary-button" onClick={resetSelections}>
                 Reset selections
@@ -423,6 +465,22 @@ function formatServiceVersionSummary(versions: CompatibleVersion[]): string {
   }
 
   return `${versions.length.toLocaleString()} observed versions`
+}
+
+function serviceMatchesTypeFilter(types: string[], filter: ComponentTypeFilter): boolean {
+  return filter === 'all' || types.includes(filter)
+}
+
+function componentMatchesTypeFilter(type: string, filter: ComponentTypeFilter): boolean {
+  return filter === 'all' || type === filter
+}
+
+function filterVersionsByType(versions: CompatibleVersion[], filter: ComponentTypeFilter): CompatibleVersion[] {
+  return versions.filter((version) => componentMatchesTypeFilter(version.component.type, filter))
+}
+
+function filterTypesByType(types: string[], filter: ComponentTypeFilter): string[] {
+  return filter === 'all' ? types : types.filter((type) => type === filter)
 }
 
 function toggleSetValue<T>(set: Set<T>, value: T): Set<T> {
