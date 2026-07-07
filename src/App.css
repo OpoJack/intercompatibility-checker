@@ -404,6 +404,14 @@
   text-transform: uppercase;
 }
 
+.table-head span {
+  cursor: help;
+}
+
+.table-head span:last-child {
+  text-align: right;
+}
+
 .version-row {
   border-top: 1px solid var(--border);
 }

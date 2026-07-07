@@ -384,11 +384,11 @@ function CompatibleResults({
             {expanded && (
               <div className="version-table">
                 <div className="table-head">
-                  <span>Version</span>
-                  <span>Observed</span>
-                  <span>First seen</span>
-                  <span>Last seen</span>
-                  <span>Action</span>
+                  <span title="The observed component version.">Version</span>
+                  <span title="Number of matching snapshots that include this version.">Observed</span>
+                  <span title="Earliest matching snapshot where this version appears.">First seen</span>
+                  <span title="Latest matching snapshot where this version appears.">Last seen</span>
+                  <span title="Select this version as a constraint or view evidence commits.">Action</span>
                 </div>
                 {service.versions.map((version) => (
                   <VersionRow
