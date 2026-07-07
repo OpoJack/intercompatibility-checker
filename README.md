@@ -1,32 +1,29 @@
-# React + TypeScript + Vite
+# Intercompatibility Checker
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A local web app for exploring inferred interservice compatibility from historical umbrella Helm repo data.
 
-Currently, two official plugins are available:
+The app loads historical snapshot data and lets you select service/chart/image versions as constraints. It then shows which other versions were observed in the same umbrella repo snapshots.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This is evidence of coexistence, not a guarantee of runtime compatibility. Git history can suggest that versions were expected to work together, but it cannot prove they actually did.
 
-## React Compiler
+## Supported Data
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `compatibility-snapshots.jsonl`: preferred source, one historical snapshot per line.
+- `compatibility-matrix.csv`: fallback, one historical snapshot per row.
+- `compatibility-relationships.csv`: supported as a less accurate fallback because pairwise edges do not contain full snapshot context.
 
-## Expanding the Oxlint configuration
+## Getting Started
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Open the local Vite URL, load a compatibility data file, and select service versions to narrow the observed compatibility set.
+
+## Useful Commands
+
+```sh
+npm run lint
+npm run build
+```
