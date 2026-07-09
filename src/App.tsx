@@ -38,6 +38,7 @@ function App() {
   const [serviceSearch, setServiceSearch] = useState('')
   const [componentTypeFilter, setComponentTypeFilter] = useState<ComponentTypeFilter>('all')
   const [pastedImageText, setPastedImageText] = useState('')
+  const [isPastePanelOpen, setIsPastePanelOpen] = useState(false)
   const [pastedImageResult, setPastedImageResult] = useState<PastedImageConstraintResult | null>(null)
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set())
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set())
@@ -246,41 +247,54 @@ function App() {
           </section>
 
           <section className="paste-panel">
-            <div className="paste-panel-copy">
-              <h2>Check a pasted image set</h2>
-              <p>
-                Paste image values from an environment or Helm values file. Matching image versions become active
-                constraints so you can see whether they were historically observed together.
-              </p>
-            </div>
-            <textarea
-              value={pastedImageText}
-              onChange={(event) => setPastedImageText(event.target.value)}
-              placeholder="myServiceImageName: &MYSERVICEIMAGENAME my-registry.company.com/project-name/my-service:0.5.0-dev"
-              spellCheck={false}
-            />
-            <div className="paste-actions">
+            <div className="paste-panel-header">
+              <div className="paste-panel-copy">
+                <h2>Check a pasted image set</h2>
+                <p>
+                  Paste image values from an environment or Helm values file. Matching image versions become active
+                  constraints so you can see whether they were historically observed together.
+                </p>
+              </div>
               <button
                 type="button"
                 className="secondary-button"
-                disabled={pastedImageText.trim().length === 0}
-                onClick={applyPastedImageConstraints}
+                onClick={() => setIsPastePanelOpen((isOpen) => !isOpen)}
               >
-                Apply image set
+                {isPastePanelOpen ? 'Hide paste field' : 'Show paste field'}
               </button>
-              {pastedImageText && (
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => {
-                    setPastedImageText('')
-                    setPastedImageResult(null)
-                  }}
-                >
-                  Clear paste
-                </button>
-              )}
             </div>
+            {isPastePanelOpen && (
+              <>
+                <textarea
+                  value={pastedImageText}
+                  onChange={(event) => setPastedImageText(event.target.value)}
+                  placeholder="myServiceImageName: &MYSERVICEIMAGENAME my-registry.company.com/project-name/my-service:0.5.0-dev"
+                  spellCheck={false}
+                />
+                <div className="paste-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={pastedImageText.trim().length === 0}
+                    onClick={applyPastedImageConstraints}
+                  >
+                    Apply image set
+                  </button>
+                  {pastedImageText && (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        setPastedImageText('')
+                        setPastedImageResult(null)
+                      }}
+                    >
+                      Clear paste
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
             {pastedImageResult && (
               <PastedImageResultSummary result={pastedImageResult} matchingSnapshotCount={matchingSnapshots.length} />
             )}
@@ -289,8 +303,18 @@ function App() {
           {selectedRefs.length > 0 && (
             <section className="constraint-panel">
               <div className="constraint-heading">
-                <h2>Selected constraints</h2>
-                <span>{matchingSnapshots.length.toLocaleString()} matching snapshots</span>
+                <div>
+                  <h2>Selected constraints</h2>
+                  <span>{matchingSnapshots.length.toLocaleString()} matching snapshots</span>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={resetSelections}
+                  title="Remove every active compatibility constraint"
+                >
+                  Remove all constraints
+                </button>
               </div>
               <div className="chip-row">
                 {selectedComponents.map((component) => (
@@ -489,13 +513,22 @@ function PastedImageResultSummary({
         </span>
       </div>
       {totalParsed === 0 && result.issues.length === 0 && <p>No image lines found in the pasted text.</p>}
-      {result.unmatched.length > 0 && (
+      {totalParsed > 0 && (
         <details>
-          <summary>Image versions not found in loaded data</summary>
-          <ul>
+          <summary>Pasted image version status</summary>
+          <ul className="paste-status-list">
+            {result.matched.map(({ component, pasted }) => (
+              <li key={`matched-${pasted.lineNumber}-${component.ref}`}>
+                <code>{pasted.name}</code>
+                <span>{pasted.version}</span>
+                <strong className="status-found">Found in loaded data</strong>
+              </li>
+            ))}
             {result.unmatched.map(({ pasted, ref }) => (
-              <li key={`${pasted.lineNumber}-${ref}`}>
-                <code>{pasted.name}</code> <span>{pasted.version}</span>
+              <li key={`unmatched-${pasted.lineNumber}-${ref}`}>
+                <code>{pasted.name}</code>
+                <span>{pasted.version}</span>
+                <strong className="status-missing">Provided version was not found in loaded data</strong>
               </li>
             ))}
           </ul>

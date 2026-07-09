@@ -228,6 +228,13 @@
   padding: 16px;
 }
 
+.paste-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .paste-panel-copy {
   display: grid;
   gap: 4px;
@@ -313,6 +320,26 @@
   font: 13px/1.45 var(--mono);
 }
 
+.paste-status-list li {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.status-found,
+.status-missing {
+  font-size: 13px;
+}
+
+.status-found {
+  color: #166534;
+}
+
+.status-missing {
+  color: #8c1d1d;
+}
+
 .service-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -371,6 +398,11 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.constraint-heading > div {
+  display: grid;
+  gap: 2px;
 }
 
 .constraint-heading h2 {
@@ -646,6 +678,7 @@
 
   .app-header,
   .toolbar,
+  .paste-panel-header,
   .constraint-heading {
     align-items: stretch;
     flex-direction: column;
@@ -663,6 +696,10 @@
   .segmented-control button {
     flex: 1 1 0;
     white-space: normal;
+  }
+
+  .paste-status-list li {
+    grid-template-columns: 1fr;
   }
 
   .status-bar {
