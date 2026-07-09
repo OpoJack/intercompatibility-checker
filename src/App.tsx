@@ -26,6 +26,25 @@ type PersistedSource = {
 }
 
 type ComponentTypeFilter = 'all' | 'chart' | 'image'
+type ObservedDisplayVersion = CompatibleVersion & {
+  rowKind: 'observed'
+}
+type MissingDisplayVersion = {
+  rowKind: 'not-observed'
+  component: Component
+  observedCount: 0
+  firstSeen: ''
+  lastSeen: ''
+  evidence: []
+  pastedLineNumber: number
+  image: string
+}
+type DisplayVersion = ObservedDisplayVersion | MissingDisplayVersion
+type DisplayCompatibleService = {
+  name: string
+  types: string[]
+  versions: DisplayVersion[]
+}
 
 const EMPTY_SNAPSHOTS: Snapshot[] = []
 const PERSISTED_SOURCE_KEY = 'compatibility-explorer:selected-source'
@@ -63,12 +82,18 @@ function App() {
       service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()) &&
       serviceMatchesTypeFilter(service.types, componentTypeFilter),
   )
-  const activeCompatibleServices = compatibleServices
-    .map((service) => ({
+  const activeCompatibleServices = addMissingPastedVersions(
+    compatibleServices.map((service) => ({
       ...service,
-      versions: filterVersionsByType(service.versions, componentTypeFilter),
+      versions: filterVersionsByType(service.versions, componentTypeFilter).map((version) => ({
+        ...version,
+        rowKind: 'observed' as const,
+      })),
       types: filterTypesByType(service.types, componentTypeFilter),
-    }))
+    })),
+    pastedImageResult,
+    componentTypeFilter,
+  )
     .filter(
       (service) =>
         service.versions.length > 0 && service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()),
@@ -334,7 +359,7 @@ function App() {
             </section>
           )}
 
-          {selectedRefs.length === 0 ? (
+          {selectedRefs.length === 0 && !pastedImageResult ? (
             <section className="service-grid" aria-label="Services">
               {filteredServices.map((service) => (
                 <button
@@ -429,7 +454,7 @@ function CompatibleResults({
   onToggleService,
   onToggleEvidence,
 }: {
-  services: ReturnType<typeof getCompatibleVersions>
+  services: DisplayCompatibleService[]
   selectedRefs: string[]
   expandedServices: Set<string>
   expandedEvidence: Set<string>
@@ -557,35 +582,43 @@ function VersionRow({
   onSelect,
   onToggleEvidence,
 }: {
-  version: CompatibleVersion
+  version: DisplayVersion
   isSelected: boolean
   evidenceExpanded: boolean
   onSelect: (ref: string) => void
   onToggleEvidence: (versionRef: string) => void
 }) {
+  const isNotObserved = version.rowKind === 'not-observed'
+
   return (
-    <div className={`version-row ${isSelected ? 'is-selected' : ''}`}>
+    <div className={`version-row ${isSelected ? 'is-selected' : ''} ${isNotObserved ? 'is-not-observed' : ''}`}>
       <div className="version-main">
         <code>{version.component.version}</code>
-        <small>{version.component.type}</small>
+        <small>{isNotObserved ? 'image - not observed in loaded data' : version.component.type}</small>
       </div>
-      <span>{version.observedCount.toLocaleString()}</span>
-      <span>{formatDate(version.firstSeen)}</span>
-      <span>{formatDate(version.lastSeen)}</span>
+      <span>{isNotObserved ? 'Not observed' : version.observedCount.toLocaleString()}</span>
+      <span>{isNotObserved ? '-' : formatDate(version.firstSeen)}</span>
+      <span>{isNotObserved ? '-' : formatDate(version.lastSeen)}</span>
       <div className="row-actions">
-        <button
-          type="button"
-          className="small-button"
-          disabled={isSelected}
-          onClick={() => onSelect(version.component.ref)}
-        >
-          {isSelected ? 'Selected' : 'Select'}
-        </button>
-        <button type="button" className="link-button" onClick={() => onToggleEvidence(version.component.ref)}>
-          Evidence
-        </button>
+        {isNotObserved ? (
+          <span className="not-observed-badge">Provided version not found</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="small-button"
+              disabled={isSelected}
+              onClick={() => onSelect(version.component.ref)}
+            >
+              {isSelected ? 'Selected' : 'Select'}
+            </button>
+            <button type="button" className="link-button" onClick={() => onToggleEvidence(version.component.ref)}>
+              Evidence
+            </button>
+          </>
+        )}
       </div>
-      {evidenceExpanded && (
+      {evidenceExpanded && !isNotObserved && (
         <div className="evidence-list">
           {version.evidence.map((row) => (
             <div key={`${version.component.ref}-${row.snapshotId}`} className="evidence-row">
@@ -600,12 +633,20 @@ function VersionRow({
   )
 }
 
-function formatServiceVersionSummary(versions: CompatibleVersion[]): string {
+function formatServiceVersionSummary(versions: DisplayVersion[]): string {
   if (versions.length === 1) {
-    return versions[0].component.version
+    const [version] = versions
+    return version.rowKind === 'not-observed' ? `${version.component.version} not observed` : version.component.version
   }
 
-  return `${versions.length.toLocaleString()} observed versions`
+  const missingCount = versions.filter((version) => version.rowKind === 'not-observed').length
+  const observedCount = versions.length - missingCount
+
+  if (missingCount === 0) {
+    return `${observedCount.toLocaleString()} observed versions`
+  }
+
+  return `${observedCount.toLocaleString()} observed, ${missingCount.toLocaleString()} not observed`
 }
 
 function serviceMatchesTypeFilter(types: string[], filter: ComponentTypeFilter): boolean {
@@ -616,12 +657,74 @@ function componentMatchesTypeFilter(type: string, filter: ComponentTypeFilter): 
   return filter === 'all' || type === filter
 }
 
-function filterVersionsByType(versions: CompatibleVersion[], filter: ComponentTypeFilter): CompatibleVersion[] {
+function filterVersionsByType<TVersion extends { component: Component }>(versions: TVersion[], filter: ComponentTypeFilter): TVersion[] {
   return versions.filter((version) => componentMatchesTypeFilter(version.component.type, filter))
 }
 
 function filterTypesByType(types: string[], filter: ComponentTypeFilter): string[] {
   return filter === 'all' ? types : types.filter((type) => type === filter)
+}
+
+function addMissingPastedVersions(
+  services: DisplayCompatibleService[],
+  pastedImageResult: PastedImageConstraintResult | null,
+  filter: ComponentTypeFilter,
+): DisplayCompatibleService[] {
+  if (!pastedImageResult || filter === 'chart') {
+    return services
+  }
+
+  const servicesByName = new Map(services.map((service) => [service.name, { ...service, versions: [...service.versions] }]))
+
+  for (const { pasted, ref } of pastedImageResult.unmatched) {
+    const component: Component = {
+      type: 'image',
+      name: pasted.name,
+      version: pasted.version,
+      ref,
+    }
+    const missingVersion: MissingDisplayVersion = {
+      rowKind: 'not-observed',
+      component,
+      observedCount: 0,
+      firstSeen: '',
+      lastSeen: '',
+      evidence: [],
+      pastedLineNumber: pasted.lineNumber,
+      image: pasted.image,
+    }
+    const service = servicesByName.get(pasted.name)
+
+    if (service) {
+      if (!service.types.includes('image')) {
+        service.types = [...service.types, 'image'].sort()
+      }
+      if (!service.versions.some((version) => version.component.ref === ref)) {
+        service.versions.push(missingVersion)
+      }
+    } else {
+      servicesByName.set(pasted.name, {
+        name: pasted.name,
+        types: ['image'],
+        versions: [missingVersion],
+      })
+    }
+  }
+
+  return Array.from(servicesByName.values())
+    .map((service) => ({
+      ...service,
+      versions: service.versions.sort(compareDisplayVersions),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function compareDisplayVersions(a: DisplayVersion, b: DisplayVersion): number {
+  if (a.rowKind !== b.rowKind) {
+    return a.rowKind === 'not-observed' ? -1 : 1
+  }
+
+  return b.observedCount - a.observedCount || b.lastSeen.localeCompare(a.lastSeen) || a.component.version.localeCompare(b.component.version)
 }
 
 function toggleSetValue<T>(set: Set<T>, value: T): Set<T> {

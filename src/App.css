@@ -545,6 +545,17 @@
   background: var(--selected);
 }
 
+.version-row.is-not-observed {
+  border-left: 4px solid #dc2626;
+  background: #fff1f1;
+  color: #7f1d1d;
+}
+
+.version-row.is-not-observed .version-main code {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
 .version-main {
   display: grid;
   gap: 4px;
@@ -570,6 +581,19 @@
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.not-observed-badge {
+  display: inline-flex;
+  justify-content: center;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fee2e2;
+  color: #7f1d1d;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
 }
 
 .link-button {
