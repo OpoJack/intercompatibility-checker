@@ -9,8 +9,9 @@ import {
   getMatchingSnapshots,
   getVersionsForService,
   parseCompatibilityFile,
+  resolvePastedImageConstraints,
 } from './compatibility'
-import type { Component, CompatibleVersion, Snapshot, SourceKind } from './compatibility'
+import type { Component, CompatibleVersion, PastedImageConstraintResult, Snapshot, SourceKind } from './compatibility'
 
 type LoadedSource = {
   fileName: string
@@ -36,6 +37,8 @@ function App() {
   const [selectedService, setSelectedService] = useState<string | null>(null)
   const [serviceSearch, setServiceSearch] = useState('')
   const [componentTypeFilter, setComponentTypeFilter] = useState<ComponentTypeFilter>('all')
+  const [pastedImageText, setPastedImageText] = useState('')
+  const [pastedImageResult, setPastedImageResult] = useState<PastedImageConstraintResult | null>(null)
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set())
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(initialSourceLoad.error)
@@ -98,6 +101,7 @@ function App() {
       }
       setSelectedRefs([])
       setSelectedService(null)
+      setPastedImageResult(null)
       setExpandedServices(new Set())
       setExpandedEvidence(new Set())
     } catch (caught) {
@@ -120,6 +124,18 @@ function App() {
 
   const resetSelections = () => {
     setSelectedRefs([])
+    setSelectedService(null)
+    setPastedImageResult(null)
+    setExpandedServices(new Set())
+    setExpandedEvidence(new Set())
+  }
+
+  const applyPastedImageConstraints = () => {
+    const result = resolvePastedImageConstraints(pastedImageText, indexes)
+    const refs = Array.from(new Set(result.matched.map(({ component }) => component.ref)))
+
+    setPastedImageResult(result)
+    setSelectedRefs(refs)
     setSelectedService(null)
     setExpandedServices(new Set())
     setExpandedEvidence(new Set())
@@ -226,6 +242,47 @@ function App() {
               <button type="button" className="secondary-button" onClick={resetSelections}>
                 Reset selections
               </button>
+            )}
+          </section>
+
+          <section className="paste-panel">
+            <div className="paste-panel-copy">
+              <h2>Check a pasted image set</h2>
+              <p>
+                Paste image values from an environment or Helm values file. Matching image versions become active
+                constraints so you can see whether they were historically observed together.
+              </p>
+            </div>
+            <textarea
+              value={pastedImageText}
+              onChange={(event) => setPastedImageText(event.target.value)}
+              placeholder="myServiceImageName: &MYSERVICEIMAGENAME my-registry.company.com/project-name/my-service:0.5.0-dev"
+              spellCheck={false}
+            />
+            <div className="paste-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={pastedImageText.trim().length === 0}
+                onClick={applyPastedImageConstraints}
+              >
+                Apply image set
+              </button>
+              {pastedImageText && (
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => {
+                    setPastedImageText('')
+                    setPastedImageResult(null)
+                  }}
+                >
+                  Clear paste
+                </button>
+              )}
+            </div>
+            {pastedImageResult && (
+              <PastedImageResultSummary result={pastedImageResult} matchingSnapshotCount={matchingSnapshots.length} />
             )}
           </section>
 
@@ -406,6 +463,57 @@ function CompatibleResults({
         )
       })}
     </section>
+  )
+}
+
+function PastedImageResultSummary({
+  result,
+  matchingSnapshotCount,
+}: {
+  result: PastedImageConstraintResult
+  matchingSnapshotCount: number
+}) {
+  const totalParsed = result.matched.length + result.unmatched.length
+  const observedTogether = result.matched.length > 0 && matchingSnapshotCount > 0
+  const statusLabel =
+    result.matched.length === 0 ? 'No matching image versions' : observedTogether ? 'Observed together' : 'Not observed together'
+
+  return (
+    <div className="paste-result">
+      <div className={observedTogether ? 'paste-result-status is-observed' : 'paste-result-status'}>
+        <strong>{statusLabel}</strong>
+        <span>
+          {result.matched.length.toLocaleString()} matched, {result.unmatched.length.toLocaleString()} not found,
+          {' '}
+          {result.issues.length.toLocaleString()} parse issues
+        </span>
+      </div>
+      {totalParsed === 0 && result.issues.length === 0 && <p>No image lines found in the pasted text.</p>}
+      {result.unmatched.length > 0 && (
+        <details>
+          <summary>Image versions not found in loaded data</summary>
+          <ul>
+            {result.unmatched.map(({ pasted, ref }) => (
+              <li key={`${pasted.lineNumber}-${ref}`}>
+                <code>{pasted.name}</code> <span>{pasted.version}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {result.issues.length > 0 && (
+        <details>
+          <summary>Lines that could not be parsed</summary>
+          <ul>
+            {result.issues.map((issue) => (
+              <li key={`${issue.lineNumber}-${issue.line}`}>
+                Line {issue.lineNumber}: {issue.reason}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   )
 }
 

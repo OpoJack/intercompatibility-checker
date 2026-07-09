@@ -58,6 +58,35 @@ export type CompatibleService = {
   versions: CompatibleVersion[]
 }
 
+export type PastedImageVersion = {
+  lineNumber: number
+  name: string
+  version: string
+  image: string
+}
+
+export type PastedImageIssue = {
+  lineNumber: number
+  line: string
+  reason: string
+}
+
+export type PastedImageConstraintMatch = {
+  pasted: PastedImageVersion
+  component: Component
+}
+
+export type PastedImageConstraintMiss = {
+  pasted: PastedImageVersion
+  ref: string
+}
+
+export type PastedImageConstraintResult = {
+  matched: PastedImageConstraintMatch[]
+  unmatched: PastedImageConstraintMiss[]
+  issues: PastedImageIssue[]
+}
+
 const METADATA_COLUMNS = new Set([
   'commit',
   'short_commit',
@@ -338,6 +367,58 @@ export function parseCompatibilityFile(fileName: string, fileText: string): { so
   return { sourceKind: 'matrix', snapshots: parseMatrixCsv(fileText) }
 }
 
+/** Parses a Helm values-style image list into image component names and versions. */
+export function parsePastedImageVersions(fileText: string): { images: PastedImageVersion[]; issues: PastedImageIssue[] } {
+  const images: PastedImageVersion[] = []
+  const issues: PastedImageIssue[] = []
+
+  fileText.split(/\r?\n/).forEach((rawLine, index) => {
+    const lineNumber = index + 1
+    const line = rawLine.trim()
+
+    if (!line || line.startsWith('#')) {
+      return
+    }
+
+    const match = line.match(/^([A-Za-z0-9_.-]+)\s*:\s*(?:&[^\s]+\s+)?(\S+)\s*$/)
+    if (!match) {
+      issues.push({ lineNumber, line: rawLine, reason: 'Expected "imageName: &ANCHOR registry/path/image:version".' })
+      return
+    }
+
+    const [, name, image] = match
+    const version = imageTag(image)
+    if (!version) {
+      issues.push({ lineNumber, line: rawLine, reason: 'Image reference is missing a tag/version.' })
+      return
+    }
+
+    images.push({ lineNumber, name, version, image })
+  })
+
+  return { images, issues }
+}
+
+/** Resolves pasted image versions to known image component refs in the loaded compatibility data. */
+export function resolvePastedImageConstraints(fileText: string, indexes: Indexes): PastedImageConstraintResult {
+  const parsed = parsePastedImageVersions(fileText)
+  const matched: PastedImageConstraintMatch[] = []
+  const unmatched: PastedImageConstraintMiss[] = []
+
+  for (const pasted of parsed.images) {
+    const ref = `image:${pasted.name}@${pasted.version}`
+    const component = indexes.componentRefToComponent.get(ref)
+
+    if (component) {
+      matched.push({ pasted, component })
+    } else {
+      unmatched.push({ pasted, ref })
+    }
+  }
+
+  return { matched, unmatched, issues: parsed.issues }
+}
+
 /** Applies the requested evidence-first version sort order. */
 function compareCompatibleVersions(a: CompatibleVersion, b: CompatibleVersion): number {
   return (
@@ -470,6 +551,18 @@ function stringValue(value: unknown): string {
 /** Coerces unknown array-ish fields into arrays. */
 function arrayValue(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
+}
+
+/** Extracts the tag after the final colon in the image path portion. */
+function imageTag(image: string): string {
+  const lastSlashIndex = image.lastIndexOf('/')
+  const tagSeparatorIndex = image.indexOf(':', lastSlashIndex + 1)
+
+  if (tagSeparatorIndex === -1 || tagSeparatorIndex === image.length - 1) {
+    return ''
+  }
+
+  return image.slice(tagSeparatorIndex + 1)
 }
 
 /** Chooses the earlier of two date strings, preserving non-empty unknown text. */

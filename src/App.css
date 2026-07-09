@@ -83,6 +83,7 @@
 
 .status-bar > div,
 .constraint-panel,
+.paste-panel,
 .empty-state,
 .no-results,
 .warning,
@@ -218,6 +219,98 @@
   background: var(--panel);
   color: var(--text);
   font: inherit;
+}
+
+.paste-panel {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 16px;
+}
+
+.paste-panel-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.paste-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.paste-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.paste-panel textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--soft);
+  color: var(--text);
+  font: 13px/1.5 var(--mono);
+}
+
+.paste-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.paste-actions .secondary-button:disabled {
+  color: var(--muted);
+  cursor: default;
+  background: var(--soft);
+}
+
+.paste-result {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.paste-result-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: #8c1d1d;
+}
+
+.paste-result-status.is-observed {
+  color: #166534;
+}
+
+.paste-result-status span,
+.paste-result details {
+  color: var(--muted);
+}
+
+.paste-result summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.paste-result ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.paste-result code {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--code-bg);
+  color: var(--text-strong);
+  font: 13px/1.45 var(--mono);
 }
 
 .service-grid {
