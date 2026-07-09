@@ -475,15 +475,20 @@ function CompatibleResults({
     <section className="compatible-list" aria-label="Compatible observed versions">
       {services.map((service) => {
         const expanded = expandedServices.has(service.name)
+        const hasNotObserved = service.versions.some((version) => version.rowKind === 'not-observed')
         return (
-          <article key={service.name} className="accordion">
-            <button type="button" className="accordion-trigger" onClick={() => onToggleService(service.name)}>
+          <article key={service.name} className={`accordion ${hasNotObserved ? 'has-not-observed' : ''}`}>
+            <button
+              type="button"
+              className={`accordion-trigger ${hasNotObserved ? 'has-not-observed' : ''}`}
+              onClick={() => onToggleService(service.name)}
+            >
               <span>
                 <strong>{service.name}</strong>
                 <small>{service.types.join(', ') || 'component'}</small>
               </span>
               <span>
-                <span className="version-summary">{formatServiceVersionSummary(service.versions)}</span>
+                <VersionSummary versions={service.versions} />
                 <span className="chevron">{expanded ? '−' : '+'}</span>
               </span>
             </button>
@@ -512,6 +517,24 @@ function CompatibleResults({
         )
       })}
     </section>
+  )
+}
+
+function VersionSummary({ versions }: { versions: DisplayVersion[] }) {
+  const missingCount = versions.filter((version) => version.rowKind === 'not-observed').length
+  const observedCount = versions.length - missingCount
+
+  if (missingCount === 0) {
+    return <span className="version-summary">{formatObservedVersionSummary(versions)}</span>
+  }
+
+  return (
+    <span className="version-summary has-not-observed">
+      <strong>Not observed</strong>
+      <span>
+        {observedCount.toLocaleString()} observed, {missingCount.toLocaleString()} not observed
+      </span>
+    </span>
   )
 }
 
@@ -633,20 +656,12 @@ function VersionRow({
   )
 }
 
-function formatServiceVersionSummary(versions: DisplayVersion[]): string {
+function formatObservedVersionSummary(versions: DisplayVersion[]): string {
   if (versions.length === 1) {
-    const [version] = versions
-    return version.rowKind === 'not-observed' ? `${version.component.version} not observed` : version.component.version
+    return versions[0].component.version
   }
 
-  const missingCount = versions.filter((version) => version.rowKind === 'not-observed').length
-  const observedCount = versions.length - missingCount
-
-  if (missingCount === 0) {
-    return `${observedCount.toLocaleString()} observed versions`
-  }
-
-  return `${observedCount.toLocaleString()} observed, ${missingCount.toLocaleString()} not observed`
+  return `${versions.length.toLocaleString()} observed versions`
 }
 
 function serviceMatchesTypeFilter(types: string[], filter: ComponentTypeFilter): boolean {

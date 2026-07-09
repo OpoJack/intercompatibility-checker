@@ -456,6 +456,11 @@
   background: var(--panel);
 }
 
+.accordion.has-not-observed {
+  border-color: #fca5a5;
+  background: #fff7f7;
+}
+
 .accordion-trigger {
   display: flex;
   align-items: center;
@@ -472,6 +477,12 @@
   text-align: left;
 }
 
+.accordion-trigger.has-not-observed {
+  border-left: 6px solid #dc2626;
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
 .accordion-trigger > span {
   display: grid;
   gap: 2px;
@@ -483,6 +494,14 @@
   overflow-wrap: anywhere;
 }
 
+.accordion-trigger.has-not-observed strong {
+  color: #7f1d1d;
+}
+
+.accordion-trigger.has-not-observed small {
+  color: #991b1b;
+}
+
 .accordion-trigger > span:last-child {
   display: inline-flex;
   align-items: center;
@@ -492,8 +511,20 @@
 }
 
 .version-summary {
+  display: grid;
+  gap: 1px;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+.version-summary.has-not-observed strong {
+  color: #991b1b;
+  font-weight: 850;
+}
+
+.version-summary.has-not-observed span {
+  color: #991b1b;
+  font-weight: 700;
 }
 
 .chevron {
