@@ -48,6 +48,7 @@ type DisplayCompatibleService = {
 
 const EMPTY_SNAPSHOTS: Snapshot[] = []
 const PERSISTED_SOURCE_KEY = 'compatibility-explorer:selected-source'
+const VISIBLE_CONSTRAINT_LIMIT = 6
 
 function App() {
   const [initialSourceLoad] = useState(loadPersistedSource)
@@ -56,6 +57,7 @@ function App() {
   const [selectedService, setSelectedService] = useState<string | null>(null)
   const [serviceSearch, setServiceSearch] = useState('')
   const [componentTypeFilter, setComponentTypeFilter] = useState<ComponentTypeFilter>('all')
+  const [isConstraintListExpanded, setIsConstraintListExpanded] = useState(false)
   const [pastedImageText, setPastedImageText] = useState('')
   const [isPastePanelOpen, setIsPastePanelOpen] = useState(false)
   const [pastedImageResult, setPastedImageResult] = useState<PastedImageConstraintResult | null>(null)
@@ -77,6 +79,10 @@ function App() {
   const selectedComponents = selectedRefs
     .map((ref) => indexes.componentRefToComponent.get(ref))
     .filter((component): component is Component => component !== undefined)
+  const hiddenConstraintCount = Math.max(0, selectedComponents.length - VISIBLE_CONSTRAINT_LIMIT)
+  const visibleSelectedComponents = isConstraintListExpanded
+    ? selectedComponents
+    : selectedComponents.slice(0, VISIBLE_CONSTRAINT_LIMIT)
   const filteredServices = services.filter(
     (service) =>
       service.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()) &&
@@ -127,6 +133,7 @@ function App() {
       }
       setSelectedRefs([])
       setSelectedService(null)
+      setIsConstraintListExpanded(false)
       setPastedImageResult(null)
       setExpandedServices(new Set())
       setExpandedEvidence(new Set())
@@ -151,6 +158,7 @@ function App() {
   const resetSelections = () => {
     setSelectedRefs([])
     setSelectedService(null)
+    setIsConstraintListExpanded(false)
     setPastedImageResult(null)
     setExpandedServices(new Set())
     setExpandedEvidence(new Set())
@@ -163,6 +171,7 @@ function App() {
     setPastedImageResult(result)
     setSelectedRefs(refs)
     setSelectedService(null)
+    setIsConstraintListExpanded(false)
     setExpandedServices(new Set())
     setExpandedEvidence(new Set())
   }
@@ -342,7 +351,7 @@ function App() {
                 </button>
               </div>
               <div className="chip-row">
-                {selectedComponents.map((component) => (
+                {visibleSelectedComponents.map((component) => (
                   <button
                     key={component.ref}
                     type="button"
@@ -355,6 +364,17 @@ function App() {
                     <span className="chip-remove">x</span>
                   </button>
                 ))}
+                {hiddenConstraintCount > 0 && (
+                  <button
+                    type="button"
+                    className="constraint-chip constraint-toggle"
+                    onClick={() => setIsConstraintListExpanded((isExpanded) => !isExpanded)}
+                  >
+                    {isConstraintListExpanded
+                      ? 'Show fewer'
+                      : `Show ${hiddenConstraintCount.toLocaleString()} more`}
+                  </button>
+                )}
               </div>
             </section>
           )}
